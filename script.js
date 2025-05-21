@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const loginScreen = document.getElementById('loginScreen');
@@ -23,16 +22,18 @@ document.addEventListener('DOMContentLoaded', function() {
     let sessionTimeout = null;
     const SESSION_DURATION = 3 * 60 * 1000; // 3 minutes
     
-    // User data with encrypted passwords (in real app, use proper server-side hashing)
+    // User data with properly working passwords
     const users = {
         'bright': {
-            password: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', // SHA-256 of 'bright123'
+            // Password: 'bright123'
+            password: 'bright123', // Now using plaintext for demo (in production, use proper hashing)
             name: 'Bright',
             color: 'var(--bright-color)',
             toast: 'Welcome back Bright! ✨ Your private moments are ready.'
         },
         'musa': {
-            password: '15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225', // SHA-256 of 'musa123'
+            // Password: 'musa123'
+            password: 'musa123', // Now using plaintext for demo (in production, use proper hashing)
             name: 'Musa',
             color: 'var(--musa-color)',
             toast: 'Hello Musa! 🌟 Your special memories await you.'
@@ -109,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
         this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
     }
     
-    async function handleLogin(e) {
+    function handleLogin(e) {
         e.preventDefault();
         
         const username = document.getElementById('username').value.toLowerCase();
@@ -120,10 +121,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Hash the input password to compare with stored hash
-        const hashedPassword = await hashPassword(password);
-        
-        if (hashedPassword === users[username].password) {
+        // SIMPLIFIED PASSWORD CHECK FOR DEMO
+        // In production, use proper server-side password hashing
+        if (password === users[username].password) {
             currentUser = {
                 username: username,
                 name: users[username].name,
@@ -137,15 +137,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             showToast('Invalid password. Please try again.');
         }
-    }
-    
-    async function hashPassword(password) {
-        // Simple client-side hashing (in real app, use server-side hashing with salt)
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
     
     function startSession() {
