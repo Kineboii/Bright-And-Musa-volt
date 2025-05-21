@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Moments • Bright & Musa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <!-- Login Screen -->
+        <div class="auth-screen" id="loginScreen">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h1>Private Moments</h1>
+                <p>Bright & Musa's Secure Album</p>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Your name" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Secret code" required>
+                    <button type="button" class="toggle-password"><i class="fas fa-eye"></i></button>
+                </div>
+                <button type="submit" class="auth-btn">
+                    <span>Unlock Memories</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            
+            <div class="watermark">
+                <p>Developed by <span>bright chibondo</span></p>
+            </div>
+        </div>
+        
+        <!-- Main App (hidden initially) -->
+        <div class="app-main" id="appMain" style="display: none;">
+            <header class="app-header">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar"></div>
+                    <span id="welcomeMessage"></span>
+                </div>
+                <button id="lockBtn" class="lock-btn">
+                    <i class="fas fa-lock"></i>
+                </button>
+            </header>
+            
+            <main class="gallery-container">
+                <div class="gallery-actions">
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag & drop photos or click to browse</p>
+                        <input type="file" id="photoUpload" accept="image/*" multiple>
+                    </div>
+                    
+                    <div class="selection-controls" id="selectionControls" style="display: none;">
+                        <button id="deleteSelectedBtn" class="action-btn danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                        <button id="downloadSelectedBtn" class="action-btn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button id="cancelSelectionBtn" class="action-btn">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="photos-grid" id="photosGrid"></div>
+            </main>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="toast-notification"></div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
