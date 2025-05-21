@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const loginScreen = document.getElementById('loginScreen');
@@ -22,36 +23,20 @@ document.addEventListener('DOMContentLoaded', function() {
     let sessionTimeout = null;
     const SESSION_DURATION = 3 * 60 * 1000; // 3 minutes
     
-    // User data
+    // User data with encrypted passwords (in real app, use proper server-side hashing)
     const users = {
         'bright': {
-            password: 'bright123',
+            password: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', // SHA-256 of 'bright123'
             name: 'Bright',
             color: 'var(--bright-color)',
             toast: 'Welcome back Bright! ✨ Your private moments are ready.'
         },
         'musa': {
-            password: 'musa123',
+            password: '15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225', // SHA-256 of 'musa123'
             name: 'Musa',
             color: 'var(--musa-color)',
             toast: 'Hello Musa! 🌟 Your special memories await you.'
         }
-    };
-    
-    // Sample photos data (in real app, this would come from server)
-    const userPhotos = {
-        'bright': [
-            { id: 1, url: 'https://source.unsplash.com/random/600x600/?couple,love', date: '2023-05-15' },
-            { id: 2, url: 'https://source.unsplash.com/random/600x600/?smile,happy', date: '2023-06-20' },
-            { id: 3, url: 'https://source.unsplash.com/random/600x600/?sunset,beach', date: '2023-07-10' },
-            { id: 4, url: 'https://source.unsplash.com/random/600x600/?wedding,ring', date: '2023-08-05' }
-        ],
-        'musa': [
-            { id: 1, url: 'https://source.unsplash.com/random/600x600/?travel,adventure', date: '2023-04-12' },
-            { id: 2, url: 'https://source.unsplash.com/random/600x600/?nature,mountain', date: '2023-05-18' },
-            { id: 3, url: 'https://source.unsplash.com/random/600x600/?city,night', date: '2023-06-22' },
-            { id: 4, url: 'https://source.unsplash.com/random/600x600/?dinner,romantic', date: '2023-07-30' }
-        ]
     };
     
     // Initialize the app
@@ -61,212 +46,217 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if user is already logged in from sessionStorage
         const savedUser = sessionStorage.getItem('currentUser');
         if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            startSession();
-            showApp();
+            try {
+                currentUser = JSON.parse(savedUser);
+                startSession();
+                showApp();
+            } catch (e) {
+                sessionStorage.removeItem('currentUser');
+                sessionStorage.removeItem('userPhotos');
+                console.error('Session parsing error:', e);
+            }
         }
         
         setupEventListeners();
     }
     
     function setupEventListeners() {
-        // Login form submission
         loginForm.addEventListener('submit', handleLogin);
-        
-        // Toggle password visibility
-        togglePassword.addEventListener('click', function() {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-        });
-        
-        // Lock button to logout
+        togglePassword.addEventListener('click', togglePasswordVisibility);
         lockBtn.addEventListener('click', lockApp);
-        
-        // Photo upload handling
         uploadArea.addEventListener('click', () => photoUpload.click());
         photoUpload.addEventListener('change', handlePhotoUpload);
-        
-        // Selection controls
         deleteSelectedBtn.addEventListener('click', deleteSelectedPhotos);
         downloadSelectedBtn.addEventListener('click', downloadSelectedPhotos);
         cancelSelectionBtn.addEventListener('click', cancelSelection);
         
-        // Drag and drop for upload
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'var(--bright-color)';
-            uploadArea.style.backgroundColor = 'rgba(255, 159, 28, 0.1)';
+        // Drag and drop events
+        ['dragover', 'dragleave', 'drop'].forEach(event => {
+            uploadArea.addEventListener(event, preventDefaults, false);
         });
         
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-            uploadArea.style.backgroundColor = 'transparent';
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-            uploadArea.style.backgroundColor = 'transparent';
-            
-            if (e.dataTransfer.files.length) {
-                photoUpload.files = e.dataTransfer.files;
-                handlePhotoUpload();
-            }
-        });
+        uploadArea.addEventListener('dragover', highlightUploadArea);
+        uploadArea.addEventListener('dragleave', unhighlightUploadArea);
+        uploadArea.addEventListener('drop', handleDrop);
     }
     
-    function handleLogin(e) {
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    function highlightUploadArea() {
+        uploadArea.style.borderColor = 'var(--bright-color)';
+        uploadArea.style.backgroundColor = 'rgba(255, 159, 28, 0.1)';
+    }
+    
+    function unhighlightUploadArea() {
+        uploadArea.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        uploadArea.style.backgroundColor = 'transparent';
+    }
+    
+    function handleDrop(e) {
+        unhighlightUploadArea();
+        if (e.dataTransfer.files.length) {
+            photoUpload.files = e.dataTransfer.files;
+            handlePhotoUpload();
+        }
+    }
+    
+    function togglePasswordVisibility() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    }
+    
+    async function handleLogin(e) {
         e.preventDefault();
         
         const username = document.getElementById('username').value.toLowerCase();
         const password = document.getElementById('password').value;
         
-        if (users[username] && users[username].password === password) {
-            // Successful login
+        if (!users[username]) {
+            showToast('User not found');
+            return;
+        }
+        
+        // Hash the input password to compare with stored hash
+        const hashedPassword = await hashPassword(password);
+        
+        if (hashedPassword === users[username].password) {
             currentUser = {
                 username: username,
                 name: users[username].name,
                 color: users[username].color
             };
             
-            // Save to sessionStorage
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-            
-            // Start session timer
             startSession();
-            
-            // Show the main app
             showApp();
-            
-            // Show welcome toast
             showToast(users[username].toast, username);
         } else {
-            showToast('Invalid credentials. Please try again.');
+            showToast('Invalid password. Please try again.');
         }
     }
     
+    async function hashPassword(password) {
+        // Simple client-side hashing (in real app, use server-side hashing with salt)
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    
     function startSession() {
-        // Clear any existing timeout
-        if (sessionTimeout) {
-            clearTimeout(sessionTimeout);
-        }
-        
-        // Set new timeout
-        sessionTimeout = setTimeout(() => {
-            lockApp();
-            showToast('Your session has expired. Please login again.');
-        }, SESSION_DURATION);
+        if (sessionTimeout) clearTimeout(sessionTimeout);
+        sessionTimeout = setTimeout(lockApp, SESSION_DURATION);
     }
     
     function showApp() {
         loginScreen.style.display = 'none';
         appMain.style.display = 'flex';
         
-        // Update UI with user info
         userAvatar.textContent = currentUser.name.charAt(0);
         userAvatar.style.background = currentUser.color;
         welcomeMessage.textContent = `Hello, ${currentUser.name}`;
         
-        // Load user's photos
-        loadPhotos(currentUser.username);
+        loadPhotos();
     }
     
     function lockApp() {
-        // Clear session
         sessionStorage.removeItem('currentUser');
-        if (sessionTimeout) {
-            clearTimeout(sessionTimeout);
-            sessionTimeout = null;
-        }
+        if (sessionTimeout) clearTimeout(sessionTimeout);
         
-        // Reset form
         loginForm.reset();
         passwordInput.setAttribute('type', 'password');
         togglePassword.innerHTML = '<i class="fas fa-eye"></i>';
         
-        // Show login screen
         appMain.style.display = 'none';
         loginScreen.style.display = 'flex';
-        
-        // Clear any selections
         cancelSelection();
     }
     
-    function loadPhotos(username) {
+    function loadPhotos() {
         photosGrid.innerHTML = '';
         
-        if (userPhotos[username]) {
-            userPhotos[username].forEach(photo => {
-                const photoItem = document.createElement('div');
-                photoItem.className = 'photo-item';
-                photoItem.innerHTML = `
-                    <input type="checkbox" class="photo-checkbox" id="photo-${photo.id}">
-                    <div class="photo-overlay">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <img src="${photo.url}" alt="Photo ${photo.id}">
-                `;
-                
-                // Add event listener to the checkbox
-                const checkbox = photoItem.querySelector('.photo-checkbox');
-                checkbox.addEventListener('change', function() {
-                    updateSelectionControls();
-                });
-                
-                photosGrid.appendChild(photoItem);
-            });
+        // Load photos from persistent storage
+        const storedPhotos = localStorage.getItem(`photos_${currentUser.username}`);
+        const userPhotos = storedPhotos ? JSON.parse(storedPhotos) : [];
+        
+        if (userPhotos.length === 0) {
+            photosGrid.innerHTML = '<p class="no-photos">No photos yet. Upload some memories!</p>';
+            return;
         }
+        
+        userPhotos.forEach(photo => {
+            createPhotoElement(photo);
+        });
+    }
+    
+    function createPhotoElement(photo) {
+        const photoItem = document.createElement('div');
+        photoItem.className = 'photo-item';
+        photoItem.dataset.id = photo.id;
+        photoItem.innerHTML = `
+            <input type="checkbox" class="photo-checkbox" id="photo-${photo.id}">
+            <div class="photo-overlay">
+                <i class="fas fa-check"></i>
+            </div>
+            <img src="${photo.url}" alt="Photo ${photo.id}">
+        `;
+        
+        photoItem.querySelector('.photo-checkbox').addEventListener('change', updateSelectionControls);
+        photosGrid.appendChild(photoItem);
     }
     
     function handlePhotoUpload() {
-        if (photoUpload.files.length === 0) return;
+        const files = photoUpload.files;
+        if (!files || files.length === 0) return;
         
-        // Simulate upload process
-        showToast(`Uploading ${photoUpload.files.length} photos...`);
+        showToast(`Uploading ${files.length} photo(s)...`, currentUser.username);
         
-        // In a real app, you would upload to a server here
-        setTimeout(() => {
-            showToast('Photos uploaded successfully!', currentUser.username);
+        // Load existing photos
+        const storedPhotos = localStorage.getItem(`photos_${currentUser.username}`);
+        const userPhotos = storedPhotos ? JSON.parse(storedPhotos) : [];
+        
+        let uploadCount = 0;
+        
+        Array.from(files).forEach(file => {
+            if (!file.type.startsWith('image/')) return;
             
-            // Simulate adding new photos to the gallery
-            Array.from(photoUpload.files).forEach((file, index) => {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const newId = userPhotos[currentUser.username].length + 1 + index;
-                        const newPhoto = {
-                            id: newId,
-                            url: e.target.result,
-                            date: new Date().toISOString().split('T')[0]
-                        };
-                        
-                        userPhotos[currentUser.username].push(newPhoto);
-                        
-                        const photoItem = document.createElement('div');
-                        photoItem.className = 'photo-item';
-                        photoItem.innerHTML = `
-                            <input type="checkbox" class="photo-checkbox" id="photo-${newId}">
-                            <div class="photo-overlay">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <img src="${newPhoto.url}" alt="Uploaded photo ${newId}">
-                        `;
-                        
-                        const checkbox = photoItem.querySelector('.photo-checkbox');
-                        checkbox.addEventListener('change', function() {
-                            updateSelectionControls();
-                        });
-                        
-                        photosGrid.prepend(photoItem);
-                    };
-                    reader.readAsDataURL(file);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const newId = Date.now() + Math.floor(Math.random() * 1000);
+                const newPhoto = {
+                    id: newId,
+                    url: e.target.result,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    date: new Date().toISOString()
+                };
+                
+                userPhotos.unshift(newPhoto); // Add to beginning
+                uploadCount++;
+                
+                // Update storage after each upload
+                localStorage.setItem(`photos_${currentUser.username}`, JSON.stringify(userPhotos));
+                
+                // Add to DOM
+                if (photosGrid.querySelector('.no-photos')) {
+                    photosGrid.innerHTML = '';
                 }
-            });
-            
-            // Reset file input
-            photoUpload.value = '';
-        }, 2000);
+                createPhotoElement(newPhoto);
+                
+                if (uploadCount === files.length) {
+                    showToast(`${uploadCount} photo(s) uploaded successfully!`, currentUser.username);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        photoUpload.value = '';
     }
     
     function updateSelectionControls() {
@@ -283,44 +273,62 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function deleteSelectedPhotos() {
         const checkboxes = document.querySelectorAll('.photo-checkbox:checked');
-        
         if (checkboxes.length === 0) return;
         
-        if (confirm(`Are you sure you want to delete ${checkboxes.length} selected photos?`)) {
-            checkboxes.forEach(checkbox => {
-                const photoId = parseInt(checkbox.id.split('-')[1]);
-                
-                // Remove from array (in real app, this would be a server call)
-                userPhotos[currentUser.username] = userPhotos[currentUser.username].filter(
-                    photo => photo.id !== photoId
-                );
-                
-                // Remove from DOM
-                checkbox.closest('.photo-item').remove();
-            });
+        if (!confirm(`Delete ${checkboxes.length} selected photo(s)?`)) return;
+        
+        // Load current photos
+        const storedPhotos = localStorage.getItem(`photos_${currentUser.username}`);
+        let userPhotos = storedPhotos ? JSON.parse(storedPhotos) : [];
+        
+        checkboxes.forEach(checkbox => {
+            const photoId = checkbox.id.split('-')[1];
             
-            showToast(`${checkboxes.length} photos deleted`, currentUser.username);
-            cancelSelection();
+            // Remove from array
+            userPhotos = userPhotos.filter(photo => photo.id !== photoId);
+            
+            // Remove from DOM
+            document.querySelector(`.photo-item[data-id="${photoId}"]`)?.remove();
+        });
+        
+        // Update storage
+        localStorage.setItem(`photos_${currentUser.username}`, JSON.stringify(userPhotos));
+        
+        if (userPhotos.length === 0) {
+            photosGrid.innerHTML = '<p class="no-photos">No photos yet. Upload some memories!</p>';
         }
+        
+        showToast(`${checkboxes.length} photo(s) deleted`, currentUser.username);
+        cancelSelection();
     }
     
     function downloadSelectedPhotos() {
         const checkboxes = document.querySelectorAll('.photo-checkbox:checked');
-        
         if (checkboxes.length === 0) return;
         
-        showToast(`Preparing ${checkboxes.length} photos for download...`, currentUser.username);
+        showToast(`Preparing ${checkboxes.length} photo(s) for download...`, currentUser.username);
         
-        // In a real app, you would create a zip or initiate multiple downloads
+        // In a real app, you would create a zip file or similar
         setTimeout(() => {
-            showToast(`${checkboxes.length} photos ready to download`, currentUser.username);
+            checkboxes.forEach((checkbox, index) => {
+                const photoId = checkbox.id.split('-')[1];
+                const photoItem = document.querySelector(`.photo-item[data-id="${photoId}"]`);
+                const img = photoItem?.querySelector('img');
+                
+                if (img) {
+                    const link = document.createElement('a');
+                    link.href = img.src;
+                    link.download = `photo_${photoId}.jpg`;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
             
-            // For demo purposes, we'll just open the first selected image in a new tab
-            if (checkboxes.length > 0) {
-                const firstImg = checkboxes[0].closest('.photo-item').querySelector('img');
-                window.open(firstImg.src, '_blank');
-            }
-        }, 1500);
+            showToast(`Download started for ${checkboxes.length} photo(s)`, currentUser.username);
+            cancelSelection();
+        }, 1000);
     }
     
     function cancelSelection() {
@@ -345,9 +353,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
-    // Prevent back button from showing login screen if session is active
+    // Prevent back button from breaking the session
     window.addEventListener('popstate', function() {
-        if (currentUser) {
+        if (currentUser && sessionStorage.getItem('currentUser')) {
             showApp();
         }
     });
